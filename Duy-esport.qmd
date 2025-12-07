@@ -34,7 +34,7 @@ To answer that, I start with a summary table, then a histogram for the whole gro
 #| label: q1_summary
 #| echo: true
 
-pacman::p_load(tidyverse,plotly,kableExtra)
+pacman::p_load(tidyverse,plotly,kableExtra,tinytex)
 
 theme_set(theme_minimal())
 
@@ -43,13 +43,11 @@ games <-read_csv("data/general_esport_games_clean.csv")
 
 
 q1_summary <- players %>%
-  summarise(
-    n_players = n(),
-    mean_earnings= mean(total_overall_usd, na.rm = TRUE),
-    median_earnings= median(total_overall_usd, na.rm = TRUE),
-    min_earnings = min(total_overall_usd, na.rm = TRUE),
-    max_earnings = max(total_overall_usd, na.rm = TRUE)
-  )
+  summarise(n_players = n(),
+            mean_earnings= mean(total_overall_usd, na.rm = TRUE),
+            median_earnings= median(total_overall_usd, na.rm= TRUE),
+            min_earnings = min(total_overall_usd, na.rm =TRUE),
+            max_earnings = max(total_overall_usd, na.rm =TRUE))
 
 q1_summary
 
@@ -111,8 +109,8 @@ top5_games <- players %>%
   slice_head(n = 5) %>%
   pull(highest_paying_game)
 
-players_plot <- players %>%
-  mutate(total_overall_m = total_overall_usd / 1e6,
+players_plot <- players%>%
+  mutate(total_overall_m = total_overall_usd/ 1e6,
          main_game_group = if_else(highest_paying_game %in% top5_games,highest_paying_game,"Other games"))
 
 q1_plotly <- plot_ly(data= players_plot,
@@ -250,3 +248,7 @@ Total prize money peaks at roughly 20–21, with ages 19, 22 and 23 still very h
 After the mid-20s, both the number of players and the money drop quickly, and players over 30 contribute only a tiny part of the overall prize pool.
 
 Based on this data, the “golden age” for earning prize money in esports is roughly from 18 to 24, with the clearest peak around age 21. Most of the money that esports players ever make is packed into this short window. Later in the project, this will contrast with software engineers, who usually start earning later but can keep high, stable incomes for many more years.
+
+Overall, esports can create a few very rich players, but it is a high-risk, short-window path with heavy competition, especially compared to the more stable and accessible careers in software engineering.
+
+
