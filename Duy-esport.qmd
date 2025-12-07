@@ -1,0 +1,252 @@
+---
+title: "Group 9 – Esports vs Software Engineers"
+author:
+  - "Duy Nguyen – Esports Section"
+  - "Bat-Orgil Erdenebat – Software Engineer Salary Section"
+  - "Daniel Jimenez – Software Engineer Career / Experience Section"
+date: "12/4/2025"
+format:
+  html:
+    code-fold: true
+    toc: true
+  pdf:
+    toc: true
+execute:
+  warning: false
+  message: false
+---
+
+## Question 1 – How is prize money distributed among the top 1000 esports players?
+
+My first question I decided to look directly at prize money. I want to understand three things:
+
+1.What is a “typical” total earning for a player in the top 1000?
+
+2.How unequal is the prize money inside this group, are there just a few people far above the rest?
+
+3.Who are those top earners, and which game do they rely on?
+
+To answer that, I start with a summary table, then a histogram for the whole group, and finally I zoom in on the top 5 players and on the first part of the ranking curve.
+
+1.1 Summary of total earnings for the top 1000 players
+
+```{r}
+#| label: q1_summary
+#| echo: true
+
+pacman::p_load(tidyverse,plotly,kableExtra)
+
+theme_set(theme_minimal())
+
+players<- read_csv("data/players_top1000_clean_12_4.csv")
+games <-read_csv("data/general_esport_games_clean.csv")
+
+
+q1_summary <- players %>%
+  summarise(
+    n_players = n(),
+    mean_earnings= mean(total_overall_usd, na.rm = TRUE),
+    median_earnings= median(total_overall_usd, na.rm = TRUE),
+    min_earnings = min(total_overall_usd, na.rm = TRUE),
+    max_earnings = max(total_overall_usd, na.rm = TRUE)
+  )
+
+q1_summary
+
+```
+
+The summary table confirms that we have 1,000 players in this sample. The average player has earned about \$0.84 million in prize money, but the median is lower at roughly \$0.55 million. The last person in the top 1000 still has more than \$0.33 million, while the number-one player is above \$7 million. The fact that the mean is well above the median already tells us that the distribution is skewed to the right: a small group of very rich players is pulling the average up above what most players actually earn.
+
+1.2 Histogram – distribution of total prize money
+
+```{r}
+#| label: q1_hist_earnings
+#| echo: true
+
+players %>%
+  mutate(total_overall_m = total_overall_usd / 1e6) %>%
+  ggplot(aes(x = total_overall_m)) +
+  geom_histogram(binwidth = 0.25, color = "white", fill = "#1f78b4")+
+  scale_x_continuous(breaks = 0:7)+
+  labs(title = "Distribution of total earnings (top 1000 esports players)",
+       x = "Total prize money (million USD)",
+       y = "Number of players")
+
+```
+
+The histogram makes this skew obvious. Most players are squeezed into the range from about \$0.3M to \$1M, and that is where the tallest bars are. This is the “typical” zone for top-1000 players: they have made hundreds of thousands of dollars, but not multiple millions. To the right, the bars become very short. Above \$2M there are only a few players in each bin, and between \$3M and \$7M we see just a handful of cases. The single bar near \$7M corresponds to the very top player. High prize money exists, but even inside the top 1000 it is rare.
+
+1.3 Top 5 outlier players by total earnings
+
+```{r}
+#| label: q1_top5_players
+#| echo: true
+
+q1_top5_players <- players%>%
+  arrange(desc(total_overall_usd)) %>%
+  slice_head(n = 5) %>%
+  mutate(total_overall_m = round(total_overall_usd / 1e6, 2)) %>%
+  select(rank,player_name,country,highest_paying_game,total_overall_m,pct_of_total_num)
+
+q1_top5_players%>%
+  kbl(col.names = c("Rank","Player","Country","Main Game","Total earnings (M USD)","Game % of total"),
+      caption = "Top 5 highest-earning esports players and their main game.") %>%
+  kable_paper(full_width = FALSE) %>%
+  kable_styling(position = "center") %>%
+  column_spec(5, bold = TRUE)
+
+
+```
+
+The table shows who these extreme outliers are. All five have Dota 2 as their main game, but they come from different countries. Each of them has earned between about \$5.9M and \$7.2M. Compared to the median of roughly \$0.55M, every one of them has more than ten times the prize money of a “typical” player in this group. The last column also shows that almost all of their income comes from a single title, which suggests that reaching the very top usually means specialising hard in one game.
+
+1.4 Plotly Prize-money rank vs total earnings (by game group)
+
+```{r}
+#| label: q1_plotly_rank
+#| echo: true
+#| 
+top5_games <- players %>%
+  count(highest_paying_game, sort = TRUE)%>%
+  slice_head(n = 5) %>%
+  pull(highest_paying_game)
+
+players_plot <- players %>%
+  mutate(total_overall_m = total_overall_usd / 1e6,
+         main_game_group = if_else(highest_paying_game %in% top5_games,highest_paying_game,"Other games"))
+
+q1_plotly <- plot_ly(data= players_plot,
+                     x = ~rank,y = ~total_overall_m,color = ~main_game_group,
+                     type = "scatter",mode = "markers",hoverinfo = "text",
+                     text = ~paste0("Rank (prize money): ", rank,
+                                    "<br>Player: ", player_name,
+                                    "<br>Country: ", country,
+                                    "<br>Game: ", highest_paying_game,
+                                    "<br>Total earnings: $", round(total_overall_usd, 0)))%>%
+  layout(title = "Rank vs total earnings (top 1000 esports players)",
+         xaxis = list(title = "Prize-money rank (1 = highest earner)",
+                      autorange = "reversed",
+                      rangeslider = list(visible = TRUE)),
+         yaxis = list(title = "Total prize money (million USD)"),
+         legend = list(title = list(text = "Main game group<br>(5 most common games in top 1000)")))
+
+q1_plotly
+
+
+
+```
+
+In the interactive rank plot, the x-axis orders players by prize-money rank (1 = highest earner) and the y-axis shows total prize money in millions of USD. The colours mark game groups: the five most common main games in the top 1000, plus an “Other games” group.
+
+If we zoom in on the top 100 ranks, the curve is fairly flat between about 100 and 40 (most players between 1.5 and a bit over 2 million USD). From around rank 30 upward, the curve bends sharply, and the top 10 jump even further away, ending at over 7 million USD for rank 1.
+
+Looking at the colours, the very top part of the curve is dominated by the Dota 2 group, with only a few points from other games mixed in. In contrast, the “Other games” group appears more often in the lower-earning parts of the ranking.
+
+Overall, Question 1 shows that prize money among the top 1000 esports players is very unequal. A typical player in this elite group earns around half a million dollars in total, but a small cluster of Dota 2 specialists earn between six and seven million. Most players are bunched together in the lower range, and then the curve jumps suddenly for the top 20–30 names. This unequal, “top-heavy” pattern is important context when we later compare esports prize money with the more stable salaries of software engineers in the rest of the project.
+
+## Question 2 – The Source of Income Risk (Game-Level Look)
+
+To what extent does the prize money structure of top esports games show a built-in risk (volatility) for professional players?
+
+Question 1 showed that Dota 2 has the top earners. Now we need to check how that money structure works. My goal is to prove that esports money, even for the best, is not steady and carries a high risk, very different from a Software Engineer's steady salary. The scatter plot below compares Total Prize Money (Y-axis) with the Percent of Money from Offline Events (X-axis). This X-axis is the key measure for income focus and instability.
+
+```{r}
+#| label: q2_game_volatility_analysis_fixed
+#| echo: true
+
+top5_earnings_games <- games%>%
+  arrange(desc(total_earnings_usd))%>%
+  slice_head(n=5)%>%
+  pull(game)
+
+games_plot_fixed <-games%>%
+  filter(total_earnings_usd> 1000000)%>%     
+  mutate(total_earnings_m= total_earnings_usd / 1e6,
+         game_group= if_else(game %in% top5_earnings_games, game,"Other games"))
+
+q2_scatter_fixed<- plot_ly(data = games_plot_fixed,x = ~percent_offline,
+                           y = ~total_earnings_m,type = "scatter",
+                           mode = "markers",color = ~game_group,size  = ~total_players,
+                           hovertemplate = paste0("Game: ", games_plot_fixed$game,"<br>Group: ",games_plot_fixed$game_group,
+                                                  "<br>Total earnings: $", round(games_plot_fixed$total_earnings_usd / 1e6, 2),
+                                                  "M","<br>% Offline: %{x:.1%}","<br>Genre: ", games_plot_fixed$genre,
+                                                  "<extra></extra>"))%>%
+  layout(title = "Total earnings vs offline percentage",
+         xaxis = list(title = "Percentage of earnings from offline tournaments (% of total)",
+                      tickformat = ".0%"),
+         yaxis = list(title = "Total earnings (million USD)"),
+         legend = list(title = list(text = "Game")))
+
+q2_scatter_fixed
+```
+
+In this scatterplot, each dot is one game with more than \$1M in total prize money. The y-axis shows how big the prize pool is, and the x-axis shows what percent of that money comes from offline tournaments. The colours highlight five major titles (Dota 2, League of Legends, CS:GO, Fortnite, Arena of Valor); all smaller games are grouped into “Other games”.
+
+Dota 2 stands out in the top-right corner: it has by far the largest total prize pool (over \$360M) and also one of the highest offline shares, with about 87% of its money coming from LAN events. This means that the game that creates the very highest earners is also the game where income depends most heavily on a few big offline tournaments, especially The International.
+
+Other major games sit in different parts of the plot. CS:GO and League of Legends also have large total earnings, but their offline percentages are more in the middle range, so prize money is spread across more events. Fortnite shows the opposite pattern: it has a huge prize pool but a much lower offline share, because many of its tournaments are online. Arena of Valor is strongly offline like Dota 2, but its total prize pool is smaller.
+
+From a risk point of view, games with high offline percentages and big prize pools create a “win or starve” situation. If a team fails to place well at one or two key LAN events in a year, their prize income drops sharply. Games with more balanced online/offline splits still have risk, but the earnings are less tied to a single tournament. In all cases, this spike-based prize structure is very different from a software engineer’s steady monthly salary, where income does not depend on winning a specific event.
+
+## Question 3 – What is the “golden age” for earning prize money in esports?
+
+After looking at how prize money is concentrated (Question 1) and how risky the game structure is (Question 2), I also want to know when in life this money is actually earned. Esports is often seen as a “young person’s career”, so here I use an age-level summary of all recorded players to see what the age curve really looks like and where the earning peak happens.
+
+3.1 How many prize-winning players are at each age?
+
+First, I look at how many players with prize money we see at each age between 13 and 35.
+
+```{r}
+#| label: q3_load_age
+#| echo: true
+
+age_earnings <- read_csv("data/esports_earnings_by_age.csv")%>%
+  filter(age >= 13, age <= 35) %>%           
+  mutate(total_prize_m = total_prize_usd / 1e6)%>%
+  arrange(age)
+
+age_earnings %>%
+  ggplot(aes(x = age, y = n_players)) +
+  geom_col(fill = "#1f78b4") +
+  scale_x_continuous(breaks = seq(13, 35, by = 2)) +
+  labs(title = "Number of esports players with prize money by age",
+       x = "Age (years)",y = "Number of players")
+```
+
+The bars are very small in the early teens and then grow quickly from about 16 to 20. The tallest bar is at age 20, with almost seven thousand players who have earned at least some prize money. Ages 19–22 are the thickest part of the curve – most active prize-winning players sit in this narrow band.
+
+After that, the counts shrink. By age 26–27 the numbers have dropped a lot, and from age 30 onward there are only a few hundred players per age. In practical terms, most players who ever earn prize money do it in their late teens and early twenties, and only a small group is still competing for money in their thirties.
+
+3.2 How is total prize money spread across ages?
+
+The second chart keeps the same ages but now stacks up the total prize money earned by each age group (in millions of USD).
+
+```{r}
+#| label: q3_prize_by_age
+#| echo: true
+
+age_earnings%>%
+  ggplot(aes(x = age, y = total_prize_m)) +
+  geom_col(fill = "#33a02c") +
+  scale_x_continuous(breaks = seq(13, 35, by = 2)) +
+  labs(title = "Total esports prize money by age",
+       x = "Age (years)",
+       y = "Total prize money (million USD)")
+
+```
+
+The overall shape is similar, but now we see where the money really concentrates. Total prize money rises steeply through the late teens and hits a clear peak at around age 21, where that single age group earns roughly \$140M in total. Ages 19–23 form a big “hill” in the middle of the plot.
+
+After about 24–25, the bars fall away. By the early thirties, each age group only contributes a small slice of the total prize pool.
+
+3.3 So what is the “golden age” in esports?
+
+Putting the two plots together:
+
+The number of prize-winning players is heavily concentrated between ages 18 and 24.
+
+Total prize money peaks at roughly 20–21, with ages 19, 22 and 23 still very high.
+
+After the mid-20s, both the number of players and the money drop quickly, and players over 30 contribute only a tiny part of the overall prize pool.
+
+Based on this data, the “golden age” for earning prize money in esports is roughly from 18 to 24, with the clearest peak around age 21. Most of the money that esports players ever make is packed into this short window. Later in the project, this will contrast with software engineers, who usually start earning later but can keep high, stable incomes for many more years.
