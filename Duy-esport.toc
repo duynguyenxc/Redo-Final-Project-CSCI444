@@ -1,0 +1,4 @@
+\contentsline {subsection}{\nonumberline Question 1 -- How is prize money distributed among the top 1000 esports players?}{1}{subsection*.1}%
+\contentsline {subsection}{\nonumberline Question 2 -- The Source of Income Risk (Game-Level Look)}{6}{subsection*.3}%
+\contentsline {subsection}{\nonumberline Question 3 -- What is the ``golden age'' for earning prize money in esports?}{9}{subsection*.4}%
+\providecommand \tocbasic@end@toc@file {}\tocbasic@end@toc@file 
